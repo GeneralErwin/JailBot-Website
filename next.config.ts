@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  ...(process.env.CLOUDFLARE_WORKERS_BUILD === "true" ? {} : { output: "standalone" as const }),
   images: { remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com" }] },
   poweredByHeader: false,
   reactStrictMode: true,

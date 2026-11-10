@@ -11,3 +11,9 @@ test-results/
 .env.*
 !.env.example
 *.log
+/dist/
+.vinext/
+.cloudflare/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

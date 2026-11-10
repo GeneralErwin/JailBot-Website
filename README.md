@@ -63,11 +63,12 @@ Configure and deploy both sides using [docs/rust-adapter.md](docs/rust-adapter.m
 
 ## Production deployment
 
-- Deploy the Next.js app to Vercel with Node.js 24. Use managed PostgreSQL with TLS. Set `APP_URL`, OAuth credentials, `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, and `BOT_API_SECRET` as server-side environment variables.
-- Set the Discord OAuth redirect URI to `https://your-domain.example/api/auth/callback`.
-- Add the website's Cloudflare DNS record for Vercel, set SSL/TLS to Full (strict), enable managed WAF rules and rate limiting, and avoid caching `/api/*`, `/dashboard/*`, `/login`, or authenticated responses.
-- Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. Both integrations are disabled when unset. The `/api/health` endpoint checks PostgreSQL and recent bot heartbeat state.
-- GitHub Actions runs lint, type checking, unit tests, dependency audit, production build, and the three-browser Playwright suite. CI does not deploy.
-- Docker and Compose are for reproducible local development or an explicitly chosen self-host. Vercel remains the production web target.
+The full dashboard runs on Cloudflare Workers using vinext. Cloudflare Pages supports static Next.js exports; this app needs server rendering, OAuth, API routes, and PostgreSQL, so Pages alone cannot host it. See [docs/cloudflare-workers.md](docs/cloudflare-workers.md) for setup.
+
+Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. `cloudflare.config.ts` reads the non-secret `HYPERDRIVE_ID` at build/deploy time. At runtime the app prefers the `HYPERDRIVE` binding and accepts a `DATABASE_URL` Worker secret as a direct-connection fallback. Set `APP_URL`, `DISCORD_CLIENT_ID`, `BOT_API_KEY_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` in the Worker environment; keep secrets encrypted and server-side.
+
+Register `https://your-domain.example/api/auth/callback` as the Discord OAuth redirect URI. Apply the PostgreSQL migration from a controlled release environment before using the dashboard. CI checks the standard Next build and the Cloudflare Worker build, but does not deploy or run production migrations.
+
+Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. `/api/health` checks PostgreSQL and recent bot heartbeat state. Docker Compose remains available for local development and the Dockerfile for explicit self-hosting.
 
 Before release, follow [the security review checklist](docs/security-review.md), configure managed database backups, and test the restore procedure.

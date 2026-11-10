@@ -1,18 +1,23 @@
 import { Pool } from "pg";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { schema } from "@/lib/db/schema";
+import { getDatabaseConnection } from "@/lib/db/connection";
 
 declare global {
   var jailbotPool: Pool | undefined;
 }
 
 export function databaseConfigured() {
-  return Boolean(process.env.DATABASE_URL);
+  try {
+    return Boolean(getDatabaseConnection().connectionString);
+  } catch {
+    return false;
+  }
 }
 
 export function getPool() {
-  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not configured");
-  globalThis.jailbotPool ??= new Pool({ connectionString: process.env.DATABASE_URL, max: 10, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: true } : undefined });
+  const connection = getDatabaseConnection();
+  globalThis.jailbotPool ??= new Pool({ ...connection, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
   return globalThis.jailbotPool;
 }
 

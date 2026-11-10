@@ -1,12 +1,12 @@
 # Operations and deployment
 
-## Vercel and Cloudflare
+## Cloudflare Workers
 
-Use a Vercel project rooted at this repository with Node.js 24. Configure every server variable from `.env.example` in the Vercel project settings. Keep `DISCORD_CLIENT_SECRET`, `DATABASE_URL`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` server-only; do not prefix them with `NEXT_PUBLIC_`. Use a managed PostgreSQL service with TLS and connection pooling suited to serverless workloads.
+Deploy the full app with `npm run deploy:vinext`; Pages is only suitable for a separate static export and cannot run this app's server routes, OAuth, or dashboard. Follow [cloudflare-workers.md](cloudflare-workers.md) to connect GitHub, configure Hyperdrive, add variables/secrets, and apply migrations.
 
-Point the Cloudflare DNS record at Vercel and use Full (strict) TLS. Enable managed WAF rules and DDoS protection. Do not cache `/api/*`, `/dashboard/*`, `/login`, or responses carrying `Set-Cookie`. Configure an edge rate limit for `/api/auth/discord` and `/api/internal/bot/*` in addition to the database-backed application limits. The app's CSP and security headers are defined in `next.config.ts`.
+Keep `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, and any direct `DATABASE_URL` secret out of source control. Never prefix them with `NEXT_PUBLIC_`. Set the OAuth callback URL to `https://your-domain.example/api/auth/callback`.
 
-Set the OAuth callback URL to `https://your-domain.example/api/auth/callback`. Run `npm run db:migrate` from a controlled release job before shifting traffic to code that expects the migration. CI builds the project but does not deploy or apply production migrations.
+Do not enable shared response caching for `/api/*`, `/dashboard/*`, `/login`, or responses carrying `Set-Cookie`. The Worker is deployed with the app's CSP and security headers from `next.config.ts`. Run `npm run db:migrate` from a controlled release job before serving code that expects the schema. CI checks both Next.js and Worker builds but does not deploy or apply production migrations.
 
 ## Local Docker
 
