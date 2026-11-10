@@ -6,7 +6,7 @@ The code only exposes settings found in the Rust source: Prisoner and moderator 
 
 ## Local development
 
-Requirements: Node.js 22.15 or newer, npm, and Docker for the local PostgreSQL service.
+Requirements: Node.js 22.23+ (22.x), 24.22+ (24.x), or 26.12+ (26.x), npm, and Docker for the local PostgreSQL service. The Cloudflare CLI requires these supported Node release lines.
 
 ```powershell
 Copy-Item .env.example .env
@@ -63,7 +63,7 @@ Configure and deploy both sides using [docs/rust-adapter.md](docs/rust-adapter.m
 
 ## Production deployment
 
-The full dashboard runs on Cloudflare Workers using vinext. Cloudflare Pages supports static Next.js exports; this app needs server rendering, OAuth, API routes, and PostgreSQL, so Pages alone cannot host it. See [docs/cloudflare-workers.md](docs/cloudflare-workers.md) for setup.
+The full dashboard runs on Cloudflare Workers using vinext. Cloudflare Pages supports static Next.js exports; this app needs server rendering, OAuth, API routes, and PostgreSQL, so Pages alone cannot host it. vinext is currently in beta, so complete the staging checks in [docs/cloudflare-workers.md](docs/cloudflare-workers.md) before sending production traffic.
 
 Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. `cloudflare.config.ts` reads the non-secret `HYPERDRIVE_ID` at build/deploy time. At runtime the app prefers the `HYPERDRIVE` binding and accepts a `DATABASE_URL` Worker secret as a direct-connection fallback. Set `APP_URL`, `DISCORD_CLIENT_ID`, `BOT_API_KEY_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` in the Worker environment; keep secrets encrypted and server-side.
 

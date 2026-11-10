@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
+const isCloudflareWorkersBuild = process.env.CLOUDFLARE_WORKERS_BUILD === "true";
+
 const nextConfig: NextConfig = {
-  ...(process.env.CLOUDFLARE_WORKERS_BUILD === "true" ? {} : { output: "standalone" as const }),
+  distDir: isCloudflareWorkersBuild ? ".vinext" : ".next",
+  ...(isCloudflareWorkersBuild ? {} : { output: "standalone" as const }),
   images: { remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com" }] },
   poweredByHeader: false,
   reactStrictMode: true,

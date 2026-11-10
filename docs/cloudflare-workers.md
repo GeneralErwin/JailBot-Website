@@ -1,11 +1,11 @@
 # Cloudflare Workers deployment
 
-The management app is full-stack: it needs server-rendered dashboard routes, OAuth callbacks, API handlers, and PostgreSQL. Deploy it as one Cloudflare Worker with vinext. Cloudflare Pages is for static Next.js exports; do not use Pages for this app's authenticated dashboard or API.
+The management app is full-stack: it needs server-rendered dashboard routes, OAuth callbacks, API handlers, and PostgreSQL. Deploy it as one Cloudflare Worker with vinext. Cloudflare Pages is for static Next.js exports; do not use Pages for this app's authenticated dashboard or API. Cloudflare currently lists vinext as beta, so validate authentication, private routes, and database operations in a staging Worker before using production data.
 
 ## Prerequisites
 
 - A Cloudflare account and a domain on Cloudflare if using a custom domain.
-- Node.js `22.23+` or `24.22+` for the current Cloudflare CLI dependency.
+- Node.js `22.23+` (22.x), `24.22+` (24.x), or `26.12+` (26.x) for the current Cloudflare CLI dependency.
 - A managed PostgreSQL database reachable from Cloudflare Hyperdrive.
 - A Discord application with its bot already configured.
 
