@@ -1,8 +1,6 @@
-import type { NextConfig } from "next";
-
 const isCloudflareWorkersBuild = process.env.CLOUDFLARE_WORKERS_BUILD === "true";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   distDir: isCloudflareWorkersBuild ? ".vinext" : ".next",
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com" }],
