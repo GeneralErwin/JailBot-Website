@@ -65,6 +65,21 @@ Register the exact Discord OAuth redirect URI `https://your-domain.example/api/a
 
 The project uses no shared response cache for authenticated routes. The static assets are served by the Worker asset binding. If later adding caching, keep `/api/*`, `/dashboard/*`, `/login`, and all `Set-Cookie` responses private.
 
+## Workers Builds (Git integration)
+
+If the repository is connected in the Cloudflare dashboard instead of deployed by GitHub Actions, set the Worker's **Settings → Build** commands explicitly. The defaults do not fit this project: the default deploy command (`npx wrangler deploy`) has no Wrangler configuration to read, and `npm run build` produces a standalone Next.js build rather than a Worker.
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npx cf build` |
+| Deploy command | `npx cf deploy --prebuilt --mode production` |
+| Preview command (optional) | `npx cf previews deploy` |
+| Root directory | empty |
+
+`cf build` writes the Worker and assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. A build command of `npm run build` generates the Worker types first and then runs `next build`, so it type-checks cleanly from a fresh clone, but it does not create `.cloudflare/output`: pair it with a deploy command of `npx cf deploy` instead, which builds and uploads in one step.
+
+Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` secret is required. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets**. Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
+
 ## Connect the bot
 
 On the Rust bot host, keep `DISCORD_TOKEN` there and set:

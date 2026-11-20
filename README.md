@@ -80,6 +80,21 @@ Register `https://your-domain.example/api/auth/callback` as the Discord OAuth re
 
 Add the non-secret `HYPERDRIVE_ID` repository variable so the build includes the Hyperdrive binding. For a manual deploy from a workstation, run `npx cf auth login` first and repeat it when the browser session expires, then `npm run deploy:vinext`.
 
+### Connecting the repository in the Cloudflare dashboard
+
+Workers Builds runs a build command and then a deploy command. The defaults do not match this project: the build command must produce the vinext Worker bundle, and the default deploy command (`npx wrangler deploy`) cannot deploy it because there is no Wrangler configuration in this repository. Set the Worker's **Settings → Build** to:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npx cf build` |
+| Deploy command | `npx cf deploy --prebuilt --mode production` |
+| Preview command (optional) | `npx cf previews deploy` |
+| Root directory | leave empty |
+
+`cf build` writes the Worker and its assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. Do not pair `cf deploy --prebuilt` with `npm run build`, because `next build` does not produce a Worker bundle. Alternatively, leave the build command empty and set the deploy command to `npx cf deploy`, which builds and uploads in one step.
+
+Workers Builds injects `CI=true`, `WORKERS_CI=1` and its own API token, so no `CLOUDFLARE_API_TOKEN` secret is needed there. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets** so the Hyperdrive binding is included at build time. Runtime values such as `APP_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, `BOT_API_SECRET` and the optional `DATABASE_URL` belong in **Settings → Variables and Secrets**, not in build variables. Apply the PostgreSQL migration before the first request that touches the dashboard.
+
 Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. `/api/health` checks PostgreSQL and recent bot heartbeat state. Docker Compose remains available for local development and the Dockerfile for explicit self-hosting.
 
 Before release, follow [the security review checklist](docs/security-review.md), configure managed database backups, and test the restore procedure.
