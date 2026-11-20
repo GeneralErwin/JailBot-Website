@@ -1,9 +1,8 @@
-// Source of truth for cf deploys:
+// Deploy with the cf CLI:
 //   build:  npx cf build
 //   deploy: npx cf deploy --prebuilt --mode production
-// `npm run build` also runs `cf build` so that Workers Builds' default
-// `npx wrangler deploy` can upload the vinext output through wrangler.jsonc.
-// Keep wrangler.jsonc in sync with this file; prefer cf when using Hyperdrive.
+// Cloudflare Workers Builds must use these commands. The default `npx wrangler
+// deploy` refuses to deploy a cf project and cannot read this file.
 import { bindings, defineConfig, defineWorker } from "cf/config";
 
 const hyperdriveId = process.env.HYPERDRIVE_ID;
