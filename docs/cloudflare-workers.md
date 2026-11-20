@@ -67,18 +67,18 @@ The project uses no shared response cache for authenticated routes. The static a
 
 ## Workers Builds (Git integration)
 
-If the repository is connected in the Cloudflare dashboard instead of deployed by GitHub Actions, set the Worker's **Settings → Build** commands explicitly. The defaults do not fit this project: the default deploy command (`npx wrangler deploy`) has no Wrangler configuration to read, and `npm run build` produces a standalone Next.js build rather than a Worker.
+If the repository is connected in the Cloudflare dashboard instead of deployed by GitHub Actions, set the Worker's **Settings → Build** commands explicitly. **Do not keep the default deploy command `npx wrangler deploy`.** With no Wrangler configuration in the repository, Wrangler classifies the project as a new Next.js app, runs `@opennextjs/cloudflare migrate`, converts the checkout into an OpenNext project and tries to deploy that build. That ignores `cloudflare.config.ts`, the Hyperdrive binding and vinext, and it fails with a self-referencing service binding error.
 
-| Setting | Value |
-| --- | --- |
-| Build command | `npx cf build` |
-| Deploy command | `npx cf deploy --prebuilt --mode production` |
-| Preview command (optional) | `npx cf previews deploy` |
-| Root directory | empty |
+Use one of these two supported configurations:
 
-`cf build` writes the Worker and assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. A build command of `npm run build` generates the Worker types first and then runs `next build`, so it type-checks cleanly from a fresh clone, but it does not create `.cloudflare/output`: pair it with a deploy command of `npx cf deploy` instead, which builds and uploads in one step.
+| Build command | Deploy command | Notes |
+| --- | --- | --- |
+| `npx cf build` | `npx cf deploy --prebuilt --mode production` | Recommended. Builds once, uploads exactly that build. |
+| `npm run build` (or empty) | `npx cf deploy` | `cf deploy` builds the vinext Worker and uploads it in one step. |
 
-Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` secret is required. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets**. Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
+`cf build` writes the Worker and assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. Do not pair `cf deploy --prebuilt` with `npm run build`, because `next build` generates the Worker types and a standalone Next.js build but no `.cloudflare/output`. The existing `npm run deploy:vinext` script also works as the deploy command: it builds the vinext Worker and uploads it with `cf`. `cf` is a pinned devDependency, so `npx cf` runs the version in `package-lock.json`. The optional preview command is `npx cf previews deploy`; leave the root directory empty.
+
+Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` secret is required. If `cf` reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets**. Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
 
 ## Connect the bot
 

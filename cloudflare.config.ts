@@ -1,3 +1,8 @@
+// Deploy with the cf CLI, never `wrangler deploy`:
+//   build:  npx cf build
+//   deploy: npx cf deploy --prebuilt --mode production
+// Workers Builds defaults to `wrangler deploy`, which migrates this project to
+// OpenNext and ignores this file. Set both commands in Settings > Build.
 import { bindings, defineConfig, defineWorker } from "cf/config";
 
 const hyperdriveId = process.env.HYPERDRIVE_ID;

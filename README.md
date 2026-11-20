@@ -82,18 +82,18 @@ Add the non-secret `HYPERDRIVE_ID` repository variable so the build includes the
 
 ### Connecting the repository in the Cloudflare dashboard
 
-Workers Builds runs a build command and then a deploy command. The defaults do not match this project: the build command must produce the vinext Worker bundle, and the default deploy command (`npx wrangler deploy`) cannot deploy it because there is no Wrangler configuration in this repository. Set the Worker's **Settings → Build** to:
+Workers Builds runs a build command and then a deploy command. **The default deploy command (`npx wrangler deploy`) is wrong for this repository.** With no Wrangler configuration present, Wrangler treats the repo as a new Next.js project, runs `@opennextjs/cloudflare migrate`, rewrites the project into an OpenNext app, and tries to deploy that. That path ignores `cloudflare.config.ts`, the Hyperdrive binding and vinext, and it fails on a self-referencing service binding. Do not use it.
 
-| Setting | Value |
-| --- | --- |
-| Build command | `npx cf build` |
-| Deploy command | `npx cf deploy --prebuilt --mode production` |
-| Preview command (optional) | `npx cf previews deploy` |
-| Root directory | leave empty |
+Set the Worker's **Settings → Build** to one of these two supported configurations:
 
-`cf build` writes the Worker and its assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. Do not pair `cf deploy --prebuilt` with `npm run build`, because `next build` does not produce a Worker bundle. Alternatively, leave the build command empty and set the deploy command to `npx cf deploy`, which builds and uploads in one step.
+| Build command | Deploy command | Notes |
+| --- | --- | --- |
+| `npx cf build` | `npx cf deploy --prebuilt --mode production` | Recommended. Builds once, uploads exactly that build. |
+| `npm run build` (or empty) | `npx cf deploy` | `cf deploy` builds the vinext Worker and uploads it in one step. |
 
-Workers Builds injects `CI=true`, `WORKERS_CI=1` and its own API token, so no `CLOUDFLARE_API_TOKEN` secret is needed there. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets** so the Hyperdrive binding is included at build time. Runtime values such as `APP_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, `BOT_API_SECRET` and the optional `DATABASE_URL` belong in **Settings → Variables and Secrets**, not in build variables. Apply the PostgreSQL migration before the first request that touches the dashboard.
+`cf build` writes the Worker and its assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build. Do not pair `cf deploy --prebuilt` with `npm run build`, because `next build` does not produce a Worker bundle. The existing `npm run deploy:vinext` script also works as the deploy command: it builds the vinext Worker and uploads it with `cf`. `cf` is a pinned devDependency, so `npx cf` uses the version in `package-lock.json`. The optional preview command is `npx cf previews deploy`; leave the root directory empty.
+
+Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token, so no `CLOUDFLARE_API_TOKEN` secret is needed there. If `cf` reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets** so the Hyperdrive binding is included at build time. Runtime values such as `APP_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, `BOT_API_SECRET` and the optional `DATABASE_URL` belong in **Settings → Variables and Secrets**, not in build variables. Apply the PostgreSQL migration before the first request that touches the dashboard.
 
 Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. `/api/health` checks PostgreSQL and recent bot heartbeat state. Docker Compose remains available for local development and the Dockerfile for explicit self-hosting.
 
