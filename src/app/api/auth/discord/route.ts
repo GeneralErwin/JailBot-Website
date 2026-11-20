@@ -1,13 +1,14 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getPublicOrigin } from "@/lib/security";
+import { databaseConfigured } from "@/lib/db";
 import { rateLimit, requestAddress } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  if (!clientId || !process.env.DISCORD_CLIENT_SECRET || !process.env.DATABASE_URL || !process.env.TOKEN_ENCRYPTION_KEY) {
+  if (!clientId || !process.env.DISCORD_CLIENT_SECRET || !databaseConfigured() || !process.env.TOKEN_ENCRYPTION_KEY) {
     return NextResponse.redirect(new URL("/login?reason=setup", getPublicOrigin()));
   }
   const rate = await rateLimit(`oauth:${requestAddress(request)}`, 20, 10 * 60 * 1000);

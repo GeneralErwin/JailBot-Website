@@ -1,0 +1,38 @@
+name: Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_SEND_TELEMETRY: "false"
+      HYPERDRIVE_ID: ${{ vars.HYPERDRIVE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run cf:types
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx cf build
+      - run: npx cf deploy --prebuilt --mode production --dry-run
+      - if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: npx cf deploy --prebuilt --mode production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

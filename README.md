@@ -12,6 +12,7 @@ Requirements: Node.js 22.23+ (22.x), 24.22+ (24.x), or 26.12+ (26.x), npm, and D
 Copy-Item .env.example .env
 docker compose up -d db
 npm install
+npm run cf:types
 npm run db:migrate
 npm run dev
 ```
@@ -36,6 +37,7 @@ npm test             Run Vitest unit tests
 npm run test:e2e     Run Playwright in Chromium, Firefox and WebKit
 npm run db:generate  Generate a Drizzle migration from schema changes
 npm run db:migrate   Apply committed Drizzle migrations
+npm run cf:types     Regenerate Cloudflare Worker types in .cloudflare/types
 npm run build        Build the standalone production app
 ```
 
@@ -67,7 +69,16 @@ The full dashboard runs on Cloudflare Workers using vinext. Cloudflare Pages sup
 
 Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. `cloudflare.config.ts` reads the non-secret `HYPERDRIVE_ID` at build/deploy time. At runtime the app prefers the `HYPERDRIVE` binding and accepts a `DATABASE_URL` Worker secret as a direct-connection fallback. Set `APP_URL`, `DISCORD_CLIENT_ID`, `BOT_API_KEY_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` in the Worker environment; keep secrets encrypted and server-side.
 
-Register `https://your-domain.example/api/auth/callback` as the Discord OAuth redirect URI. Apply the PostgreSQL migration from a controlled release environment before using the dashboard. CI checks the standard Next build and the Cloudflare Worker build, but does not deploy or run production migrations.
+Register `https://your-domain.example/api/auth/callback` as the Discord OAuth redirect URI. Apply the PostgreSQL migration from a controlled release environment before using the dashboard. CI checks the standard Next build and the Cloudflare Worker build.
+
+### Continuous deployment
+
+`.github/workflows/deploy.yml` builds the Worker once with `cf build` and validates it with `cf deploy --prebuilt --dry-run` on every pull request, then deploys the same build on pushes to `main`. Configure these repository secrets so the deploy step can authenticate without a browser login:
+
+- `CLOUDFLARE_API_TOKEN` — API token with Cloudflare Workers Scripts: Edit and the permissions the Worker bindings need.
+- `CLOUDFLARE_ACCOUNT_ID` — selects the account when the token can access more than one.
+
+Add the non-secret `HYPERDRIVE_ID` repository variable so the build includes the Hyperdrive binding. For a manual deploy from a workstation, run `npx cf auth login` first and repeat it when the browser session expires, then `npm run deploy:vinext`.
 
 Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. `/api/health` checks PostgreSQL and recent bot heartbeat state. Docker Compose remains available for local development and the Dockerfile for explicit self-hosting.
 

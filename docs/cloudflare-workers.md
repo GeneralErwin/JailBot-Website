@@ -55,7 +55,9 @@ Register the exact Discord OAuth redirect URI `https://your-domain.example/api/a
    npm run deploy:vinext
    ```
 
-   The deployment command builds the Worker and uploads it to Cloudflare. The generated assets/build output stays ignored by Git.
+   The deployment command builds the Worker and uploads it to Cloudflare. The generated assets/build output stays ignored by Git. The browser login is short-lived: if a deploy fails with an authentication error, run `npx cf auth login` again before retrying.
+
+   For unattended deployments, `.github/workflows/deploy.yml` builds once with `cf build`, validates with `cf deploy --prebuilt --dry-run` on pull requests, and uploads on pushes to `main`. It authenticates with the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets, so no browser session is involved. Set the non-secret `HYPERDRIVE_ID` repository variable as well to include the binding at build time. See the README for the token permissions.
 
 3. Add your custom domain in the Worker settings. Set `APP_URL` to that HTTPS origin and ensure the Discord redirect URI matches it exactly. Redeploy after changing Worker variables or secrets.
 

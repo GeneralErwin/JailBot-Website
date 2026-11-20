@@ -1,5 +1,11 @@
+function runsOnCloudflareWorker() {
+  return typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
+}
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  // The Node OpenTelemetry and Sentry SDKs cannot run inside a Cloudflare Worker.
+  if (runsOnCloudflareWorker()) return;
 
   if (process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
     const [{ NodeSDK }, { OTLPTraceExporter }] = await Promise.all([

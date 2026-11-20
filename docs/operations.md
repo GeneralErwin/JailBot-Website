@@ -6,7 +6,7 @@ Deploy the full app with `npm run deploy:vinext`; Pages is only suitable for a s
 
 Keep `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, and any direct `DATABASE_URL` secret out of source control. Never prefix them with `NEXT_PUBLIC_`. Set the OAuth callback URL to `https://your-domain.example/api/auth/callback`.
 
-Do not enable shared response caching for `/api/*`, `/dashboard/*`, `/login`, or responses carrying `Set-Cookie`. The Worker is deployed with the app's CSP and security headers from `next.config.ts`. Run `npm run db:migrate` from a controlled release job before serving code that expects the schema. CI checks both Next.js and Worker builds but does not deploy or apply production migrations.
+Do not enable shared response caching for `/api/*`, `/dashboard/*`, `/login`, or responses carrying `Set-Cookie`. The Worker is deployed with the app's CSP and security headers from `next.config.mjs`. Run `npm run db:migrate` from a controlled release job before serving code that expects the schema. `.github/workflows/deploy.yml` builds and uploads the Worker on pushes to `main`; it does not apply production migrations.
 
 ## Local Docker
 

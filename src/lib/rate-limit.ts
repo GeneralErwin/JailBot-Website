@@ -20,7 +20,9 @@ export async function rateLimit(key: string, maximum: number, windowMs: number) 
 }
 
 export function requestAddress(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",", 1)[0]?.trim();
-  const candidate = forwarded || request.headers.get("x-real-ip") || "unknown";
+  const direct = request.headers.get("cf-connecting-ip")?.trim();
+  const real = request.headers.get("x-real-ip")?.trim();
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const candidate = direct || real || forwarded || "unknown";
   return candidate.slice(0, 100);
 }
