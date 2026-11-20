@@ -1,8 +1,9 @@
-// Deploy with the cf CLI, never `wrangler deploy`:
+// Source of truth for cf deploys:
 //   build:  npx cf build
 //   deploy: npx cf deploy --prebuilt --mode production
-// Workers Builds defaults to `wrangler deploy`, which migrates this project to
-// OpenNext and ignores this file. Set both commands in Settings > Build.
+// `npm run build` also runs `cf build` so that Workers Builds' default
+// `npx wrangler deploy` can upload the vinext output through wrangler.jsonc.
+// Keep wrangler.jsonc in sync with this file; prefer cf when using Hyperdrive.
 import { bindings, defineConfig, defineWorker } from "cf/config";
 
 const hyperdriveId = process.env.HYPERDRIVE_ID;

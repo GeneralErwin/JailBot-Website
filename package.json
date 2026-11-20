@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm run cf:types && next build",
+    "build": "npm run cf:types && next build && cf build",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
@@ -55,7 +55,8 @@
     "tailwindcss": "^4.1.14",
     "typescript": "^5.9.3",
     "vite": "^8.3.0",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.165.0"
   },
   "type": "module",
   "allowScripts": {
