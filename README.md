@@ -38,7 +38,7 @@ npm run test:e2e     Run Playwright in Chromium, Firefox and WebKit
 npm run db:generate  Generate a Drizzle migration from schema changes
 npm run db:migrate   Apply committed Drizzle migrations
 npm run cf:types     Regenerate Cloudflare Worker types (cloudflare-env.d.ts)
-npm run build        Build the production Next.js app
+npm run build        Build the Cloudflare Worker bundle in .open-next/
 npm run preview      Build and run the Worker locally in workerd
 npm run deploy       Build and deploy the Worker to Cloudflare
 ```
@@ -69,7 +69,7 @@ Configure and deploy both sides using [docs/rust-adapter.md](docs/rust-adapter.m
 
 The full dashboard runs on Cloudflare Workers with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). Cloudflare Pages cannot host it: the app needs server rendering, OAuth callbacks, API routes, and PostgreSQL.
 
-`npm run build` produces the Worker bundle in `.open-next/`, and `wrangler.jsonc` is the deploy target, so the standard `npx wrangler deploy` works from a workstation and from Cloudflare Workers Builds connected to this repository. No custom build or deploy commands are required.
+`npm run build` runs `next build` and then the OpenNext bundler, producing `.open-next/worker.js` and `.open-next/assets`. `wrangler.jsonc` points at that output, so the standard `npx wrangler deploy` works from a workstation and from Cloudflare Workers Builds connected to this repository. No custom build or deploy commands are required.
 
 Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. Create the Hyperdrive configuration and add its ID to `wrangler.jsonc`:
 

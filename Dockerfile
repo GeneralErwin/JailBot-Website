@@ -10,7 +10,7 @@ ARG APP_URL=http://localhost:3000
 ENV APP_URL=$APP_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npx next build
 
 FROM node:24-alpine AS runner
 WORKDIR /app

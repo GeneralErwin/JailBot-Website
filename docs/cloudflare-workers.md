@@ -59,7 +59,7 @@ Register the exact Discord OAuth redirect URI `https://your-domain.example/api/a
    npm run deploy
    ```
 
-   `npm run deploy` runs `opennextjs-cloudflare build` (which runs `npm run build`) and then `npx wrangler deploy`. The build output lands in `.open-next/`, which is ignored by Git.
+   `npm run deploy` runs `opennextjs-cloudflare build` and then `opennextjs-cloudflare deploy` (a wrapper around `npx wrangler deploy`). `open-next.config.ts` pins the inner build command to `next build`, and `npm run build` is the OpenNext build, so the two cannot recurse. The build output lands in `.open-next/`, which is ignored by Git.
 
    For unattended deployments, `.github/workflows/deploy.yml` builds once with `npx opennextjs-cloudflare build`, validates the bundle with `npx wrangler deploy --dry-run` on pull requests, and uploads on pushes to `main`. It authenticates with the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets, so no browser session is involved. The workflow checks both secrets before building and reports any missing name immediately.
 
@@ -79,7 +79,7 @@ If the repository is connected in the Cloudflare dashboard instead of deployed b
 | Deploy command | `npx wrangler deploy --keep-vars` |
 | Root directory | *(empty)* |
 
-`npm run build` regenerates Worker types and runs `next build`; OpenNext reads the Next.js output when wrangler uploads. `--keep-vars` preserves dashboard variables and secrets across deploys. Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` build variable is required. If wrangler reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable.
+`npm run build` regenerates Worker types and builds both the Next.js app and the OpenNext Worker, so the deploy command finds `.open-next/worker.js` on the first run. `--keep-vars` preserves dashboard variables and secrets across deploys. Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` build variable is required. If wrangler reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable.
 
 Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
 
