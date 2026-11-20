@@ -1,7 +1,6 @@
-const isCloudflareWorkersBuild = process.env.CLOUDFLARE_WORKERS_BUILD === "true";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
 const nextConfig = {
-  distDir: isCloudflareWorkersBuild ? ".vinext" : ".next",
   images: {
     remotePatterns: [{ protocol: "https", hostname: "cdn.discordapp.com" }],
   },
@@ -28,8 +27,7 @@ const nextConfig = {
   },
 };
 
-if (!isCloudflareWorkersBuild) {
-  nextConfig.output = "standalone";
-}
-
 export default nextConfig;
+
+// Makes Cloudflare bindings available to `next dev` as well as the Worker build.
+initOpenNextCloudflareForDev();

@@ -1,0 +1,26 @@
+{
+  // Deploy target for `npx wrangler deploy`, which Cloudflare Workers Builds
+  // uses by default. `npm run build` produces `.open-next/worker.js`, so the
+  // dashboard needs no custom deploy command.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "jailbot-website",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-11-10",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "jailbot-website"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+  // Hyperdrive (recommended): create a Hyperdrive configuration, then add
+  //   "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }]
+  // here and redeploy. Until then the Worker uses the DATABASE_URL secret.
+}

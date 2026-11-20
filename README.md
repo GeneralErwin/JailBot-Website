@@ -6,7 +6,7 @@ The code only exposes settings found in the Rust source: Prisoner and moderator 
 
 ## Local development
 
-Requirements: Node.js 22.23+ (22.x), 24.22+ (24.x), or 26.12+ (26.x), npm, and Docker for the local PostgreSQL service. The Cloudflare CLI requires these supported Node release lines.
+Requirements: Node.js 22.23+ (22.x), 24.22+ (24.x), or 26.12+ (26.x), npm, and Docker for the local PostgreSQL service. Wrangler requires these supported Node release lines.
 
 ```powershell
 Copy-Item .env.example .env
@@ -37,8 +37,10 @@ npm test             Run Vitest unit tests
 npm run test:e2e     Run Playwright in Chromium, Firefox and WebKit
 npm run db:generate  Generate a Drizzle migration from schema changes
 npm run db:migrate   Apply committed Drizzle migrations
-npm run cf:types     Regenerate Cloudflare Worker types in .cloudflare/types
-npm run build        Build the standalone production app
+npm run cf:types     Regenerate Cloudflare Worker types (cloudflare-env.d.ts)
+npm run build        Build the production Next.js app
+npm run preview      Build and run the Worker locally in workerd
+npm run deploy       Build and deploy the Worker to Cloudflare
 ```
 
 The checked-in migration is the initial PostgreSQL schema. Use `db:generate` for later schema changes and commit both the SQL and Drizzle metadata. Do not use `drizzle-kit push` against production.
@@ -65,36 +67,40 @@ Configure and deploy both sides using [docs/rust-adapter.md](docs/rust-adapter.m
 
 ## Production deployment
 
-The full dashboard runs on Cloudflare Workers using vinext. Cloudflare Pages supports static Next.js exports; this app needs server rendering, OAuth, API routes, and PostgreSQL, so Pages alone cannot host it. vinext is currently in beta, so complete the staging checks in [docs/cloudflare-workers.md](docs/cloudflare-workers.md) before sending production traffic.
+The full dashboard runs on Cloudflare Workers with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). Cloudflare Pages cannot host it: the app needs server rendering, OAuth callbacks, API routes, and PostgreSQL.
 
-Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. `cloudflare.config.ts` reads the non-secret `HYPERDRIVE_ID` at build/deploy time. At runtime the app prefers the `HYPERDRIVE` binding and accepts a `DATABASE_URL` Worker secret as a direct-connection fallback. Set `APP_URL`, `DISCORD_CLIENT_ID`, `BOT_API_KEY_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` in the Worker environment; keep secrets encrypted and server-side.
+`npm run build` produces the Worker bundle in `.open-next/`, and `wrangler.jsonc` is the deploy target, so the standard `npx wrangler deploy` works from a workstation and from Cloudflare Workers Builds connected to this repository. No custom build or deploy commands are required.
 
-Register `https://your-domain.example/api/auth/callback` as the Discord OAuth redirect URI. Apply the PostgreSQL migration from a controlled release environment before using the dashboard. CI checks the standard Next build and the Cloudflare Worker build.
+Use Cloudflare Hyperdrive to connect the Worker to managed PostgreSQL. Create the Hyperdrive configuration and add its ID to `wrangler.jsonc`:
+
+```jsonc
+"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }]
+```
+
+The ID is configuration, not a secret. The runtime prefers the `HYPERDRIVE` binding and falls back to a `DATABASE_URL` Worker secret. Set `APP_URL`, `DISCORD_CLIENT_ID`, `BOT_API_KEY_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, and `BOT_API_SECRET` in the Worker environment; keep secrets encrypted and server-side.
+
+Register `https://your-domain.example/api/auth/callback` as the Discord OAuth redirect URI. Apply the PostgreSQL migration from a controlled release environment before using the dashboard. CI checks the Next.js build and the OpenNext Worker build.
 
 ### Continuous deployment
 
-`.github/workflows/deploy.yml` builds the Worker once with `cf build` and validates it with `cf deploy --prebuilt --dry-run` on every pull request, then deploys the same build on pushes to `main`. Configure these repository secrets so the deploy step can authenticate without a browser login:
+`.github/workflows/deploy.yml` builds the Worker with `npx opennextjs-cloudflare build` and validates it with `npx wrangler deploy --dry-run` on every pull request, then deploys on pushes to `main`. Configure these repository secrets:
 
 - `CLOUDFLARE_API_TOKEN` — API token with Cloudflare Workers Scripts: Edit and the permissions the Worker bindings need.
 - `CLOUDFLARE_ACCOUNT_ID` — selects the account when the token can access more than one.
 
-Add the non-secret `HYPERDRIVE_ID` repository variable so the build includes the Hyperdrive binding. For a manual deploy from a workstation, run `npx cf auth login` first and repeat it when the browser session expires, then `npm run deploy:vinext`.
+The workflow now checks both secrets before installing or building, so a missing secret fails immediately with the exact name that is absent. For a manual deploy from a workstation, run `npx wrangler login` once, then `npm run deploy`.
 
 ### Connecting the repository in the Cloudflare dashboard
 
-Workers Builds runs a build command and then a deploy command. This project deploys with the Cloudflare CLI (`cf`), so the deploy command must be changed: the default `npx wrangler deploy` refuses to deploy a `cf` project with the error *"It looks like you've run `wrangler deploy` in a project that builds for the Cloudflare CLI (`cf`)... Please run `cf deploy` instead."* Wrangler would otherwise treat the repository as a new Next.js project and try to deploy an OpenNext build that ignores `cloudflare.config.ts`, the Hyperdrive binding and vinext.
+Cloudflare Workers Builds runs a build command and then a deploy command, and the defaults already match this project:
 
-Open the Worker's **Settings → Build** and use one of these:
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy --keep-vars` |
+| Root directory | *(empty)* |
 
-| Build command | Deploy command | Notes |
-| --- | --- | --- |
-| `npm run build` | `npx cf deploy --prebuilt --mode production` | Recommended with the default build command. `npm run build` runs `cf:types`, `next build` and `cf build`, so the Worker bundle is ready to upload. |
-| `npx cf build` | `npx cf deploy --prebuilt --mode production` | Worker-only build; skips the standalone Next.js build. |
-| `npm run build` (or empty) | `npx cf deploy` | `cf deploy` rebuilds the vinext Worker and uploads it in one step. |
-
-`cf build` writes the Worker and its assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build, so it must follow a build that ran `cf build`. The existing `npm run deploy:vinext` script also works as the deploy command: it builds the vinext Worker and uploads it with `cf`. `cf` is a pinned devDependency, so `npx cf` uses the version in `package-lock.json`. The optional preview command is `npx cf previews deploy`; leave the root directory empty.
-
-`cloudflare.config.ts` is the source of truth for every cf deploy. Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token, so no `CLOUDFLARE_API_TOKEN` secret is needed there. If `cf` reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets** so the Hyperdrive binding is included at build time. Runtime values such as `APP_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, `BOT_API_SECRET` and the optional `DATABASE_URL` belong in **Settings → Variables and Secrets**, not in build variables. Apply the PostgreSQL migration before the first request that touches the dashboard.
+`--keep-vars` preserves variables and secrets set in the dashboard instead of replacing them on each deploy. Workers Builds supplies its own API token, so no `CLOUDFLARE_API_TOKEN` build variable is needed there. If `wrangler` reports that several accounts are available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable. Runtime values such as `APP_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_KEY_ID`, `BOT_API_SECRET` and the optional `DATABASE_URL` belong in **Settings → Variables and Secrets**, not in build variables. Apply the PostgreSQL migration before the first request that touches the dashboard.
 
 Configure `SENTRY_DSN` and `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` when those services are available. `/api/health` checks PostgreSQL and recent bot heartbeat state. Docker Compose remains available for local development and the Dockerfile for explicit self-hosting.
 

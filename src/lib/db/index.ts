@@ -1,11 +1,8 @@
+import { cache } from "react";
 import { Pool } from "pg";
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { schema } from "@/lib/db/schema";
 import { getDatabaseConnection } from "@/lib/db/connection";
-
-declare global {
-  var jailbotPool: Pool | undefined;
-}
 
 export function databaseConfigured() {
   try {
@@ -15,15 +12,25 @@ export function databaseConfigured() {
   }
 }
 
-export function getPool() {
+/**
+ * Cloudflare Workers forbid reusing an I/O object across requests, so the pool
+ * is created per request (and memoized for that request only). Hyperdrive does
+ * the real pooling in front of the database.
+ */
+export const getPool = cache(() => {
   const connection = getDatabaseConnection();
-  globalThis.jailbotPool ??= new Pool({ ...connection, max: 5, idleTimeoutMillis: 30_000, connectionTimeoutMillis: 5_000 });
-  return globalThis.jailbotPool;
-}
+  return new Pool({
+    ...connection,
+    max: 5,
+    maxUses: 1,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000
+  });
+});
 
-export function getDb(): NodePgDatabase<typeof schema> {
+export const getDb = cache((): NodePgDatabase<typeof schema> => {
   return drizzle(getPool(), { schema });
-}
+});
 
 export async function checkDatabase() {
   await getPool().query("select 1");

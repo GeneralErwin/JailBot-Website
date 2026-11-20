@@ -13,10 +13,10 @@ next-env.d.ts
 !.env.example
 *.log
 /dist/
-.vinext/
-.cloudflare/
+.open-next/
 .wrangler/
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
 .kilo/plans/
+cloudflare-env.d.ts

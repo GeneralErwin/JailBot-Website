@@ -4,7 +4,7 @@ import typescript from "eslint-config-next/typescript";
 const eslintConfig = [
   ...coreWebVitals,
   ...typescript,
-  { ignores: [".next/**", ".cloudflare/**", ".vinext/**", "dist/**", "node_modules/**", "drizzle/**", "coverage/**"] }
+  { ignores: [".next/**", ".open-next/**", "dist/**", "node_modules/**", "drizzle/**", "coverage/**", "cloudflare-env.d.ts"] }
 ];
 
 export default eslintConfig;
