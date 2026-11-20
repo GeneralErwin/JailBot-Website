@@ -2,7 +2,7 @@
 
 ## Cloudflare Workers
 
-Deploy the full app with `npm run deploy:vinext`; Pages is only suitable for a separate static export and cannot run this app's server routes, OAuth, or dashboard. Follow [cloudflare-workers.md](cloudflare-workers.md) to connect GitHub, configure Hyperdrive, add variables/secrets, and apply migrations.
+Deploy the full app with `npm run deploy`; Pages is only suitable for a separate static export and cannot run this app's server routes, OAuth, or dashboard. Follow [cloudflare-workers.md](cloudflare-workers.md) to connect GitHub, configure Hyperdrive, add variables/secrets, and apply migrations.
 
 Keep `DISCORD_CLIENT_SECRET`, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, and any direct `DATABASE_URL` secret out of source control. Never prefix them with `NEXT_PUBLIC_`. Set the OAuth callback URL to `https://your-domain.example/api/auth/callback`.
 

@@ -1,7 +1,6 @@
 node_modules
 .next
-.cloudflare
-.vinext
+.open-next
 dist
 .git
 .gitignore

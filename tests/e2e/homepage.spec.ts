@@ -5,7 +5,7 @@ test("public landing page explains the product and links to real entry points", 
   await expect(page.getByRole("heading", { name: /moderation, under control/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /add to discord/i }).first()).toHaveAttribute("href", "/api/discord/invite");
   await expect(page.getByRole("link", { name: /open dashboard/i })).toHaveAttribute("href", "/api/auth/discord");
-  await expect(page.getByText(/waiting for the bot handshake/i)).toBeVisible();
+  await expect(page.getByText(/awaiting bot handshake/i)).toBeVisible();
 });
 
 test("integration guide explains how the included bot adapter synchronizes", async ({ page }) => {

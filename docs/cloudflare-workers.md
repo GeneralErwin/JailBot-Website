@@ -1,21 +1,25 @@
 # Cloudflare Workers deployment
 
-The management app is full-stack: it needs server-rendered dashboard routes, OAuth callbacks, API handlers, and PostgreSQL. Deploy it as one Cloudflare Worker with vinext. Cloudflare Pages is for static Next.js exports; do not use Pages for this app's authenticated dashboard or API. Cloudflare currently lists vinext as beta, so validate authentication, private routes, and database operations in a staging Worker before using production data.
+The management app is full-stack: it needs server-rendered dashboard routes, OAuth callbacks, API handlers, and PostgreSQL. Deploy it as one Cloudflare Worker with [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare). Cloudflare Pages is for static Next.js exports; do not use Pages for this app's authenticated dashboard or API.
 
 ## Prerequisites
 
 - A Cloudflare account and a domain on Cloudflare if using a custom domain.
-- Node.js `22.23+` (22.x), `24.22+` (24.x), or `26.12+` (26.x) for the current Cloudflare CLI dependency.
+- Node.js `22.23+` (22.x), `24.22+` (24.x), or `26.12+` (26.x).
 - A managed PostgreSQL database reachable from Cloudflare Hyperdrive.
 - A Discord application with its bot already configured.
 
 ## Create the database binding
 
-Create a Hyperdrive configuration for the PostgreSQL database. The database connection string is entered in Cloudflare, not committed to this repository. Copy the resulting Hyperdrive ID. Set `HYPERDRIVE_ID` in the shell that runs the build/deploy command or add it to `cloudflare.config.ts`; the ID is configuration, not a secret.
+Create a Hyperdrive configuration for the PostgreSQL database. The database connection string is entered in Cloudflare, not committed to this repository. Copy the resulting Hyperdrive ID and add it to `wrangler.jsonc`:
 
-`cloudflare.config.ts` binds this resource as `HYPERDRIVE`. In the Worker, the Drizzle connection uses Hyperdrive's runtime connection string. A `DATABASE_URL` Worker secret can be used as a direct connection fallback, but Hyperdrive is preferred for Worker-to-PostgreSQL pooling.
+```jsonc
+"hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<your-hyperdrive-id>" }]
+```
 
-For local Worker runtime testing, copy `.dev.vars.example` to `.dev.vars` and set its values. `.dev.vars` is ignored by Git. The existing `npm run dev` still starts the regular Next.js development server using `.env`.
+The ID is configuration, not a secret. At runtime the Worker prefers the `HYPERDRIVE` binding and falls back to a `DATABASE_URL` secret, so the Hyperdrive entry can be added before or after the first deploy.
+
+For local Worker runtime testing, copy `.dev.vars.example` to `.dev.vars` and set its values. `.dev.vars` is ignored by Git. `npm run dev` still starts the regular Next.js development server using `.env`.
 
 ## Configure Worker variables and secrets
 
@@ -47,17 +51,17 @@ Register the exact Discord OAuth redirect URI `https://your-domain.example/api/a
    npm run db:migrate
    ```
 
-2. Authenticate the local Cloudflare CLI with `npx cf auth login`, then generate Worker types and deploy:
+2. Authenticate wrangler locally with `npx wrangler login`, then build and deploy:
 
    ```text
    npm run cf:types
    npm run typecheck
-   npm run deploy:vinext
+   npm run deploy
    ```
 
-   The deployment command builds the Worker and uploads it to Cloudflare. The generated assets/build output stays ignored by Git. The browser login is short-lived: if a deploy fails with an authentication error, run `npx cf auth login` again before retrying.
+   `npm run deploy` runs `opennextjs-cloudflare build` (which runs `npm run build`) and then `npx wrangler deploy`. The build output lands in `.open-next/`, which is ignored by Git.
 
-   For unattended deployments, `.github/workflows/deploy.yml` builds once with `cf build`, validates with `cf deploy --prebuilt --dry-run` on pull requests, and uploads on pushes to `main`. It authenticates with the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets, so no browser session is involved. Set the non-secret `HYPERDRIVE_ID` repository variable as well to include the binding at build time. See the README for the token permissions.
+   For unattended deployments, `.github/workflows/deploy.yml` builds once with `npx opennextjs-cloudflare build`, validates the bundle with `npx wrangler deploy --dry-run` on pull requests, and uploads on pushes to `main`. It authenticates with the `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` repository secrets, so no browser session is involved. The workflow checks both secrets before building and reports any missing name immediately.
 
 3. Add your custom domain in the Worker settings. Set `APP_URL` to that HTTPS origin and ensure the Discord redirect URI matches it exactly. Redeploy after changing Worker variables or secrets.
 
@@ -67,19 +71,21 @@ The project uses no shared response cache for authenticated routes. The static a
 
 ## Workers Builds (Git integration)
 
-If the repository is connected in the Cloudflare dashboard instead of deployed by GitHub Actions, set the Worker's **Settings → Build** commands explicitly. The default deploy command `npx wrangler deploy` cannot be used: Wrangler detects the cf Build Output in `.cloudflare/output` and stops with *"It looks like you've run `wrangler deploy` in a project that builds for the Cloudflare CLI (`cf`)... Please run `cf deploy` instead."* Without that guard it would classify the repository as a new Next.js app, run `@opennextjs/cloudflare migrate`, and deploy an OpenNext build that ignores `cloudflare.config.ts`, the Hyperdrive binding and vinext.
+If the repository is connected in the Cloudflare dashboard instead of deployed by GitHub Actions, the default commands already work because `wrangler.jsonc` points at the OpenNext output:
 
-Use one of these:
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy --keep-vars` |
+| Root directory | *(empty)* |
 
-| Build command | Deploy command | Notes |
-| --- | --- | --- |
-| `npm run build` | `npx cf deploy --prebuilt --mode production` | Recommended with the default build command. `npm run build` runs `cf:types`, `next build` and `cf build`, so the Worker bundle is ready to upload. |
-| `npx cf build` | `npx cf deploy --prebuilt --mode production` | Worker-only build; skips the standalone Next.js build. |
-| `npm run build` (or empty) | `npx cf deploy` | `cf deploy` rebuilds the vinext Worker and uploads it in one step. |
+`npm run build` regenerates Worker types and runs `next build`; OpenNext reads the Next.js output when wrangler uploads. `--keep-vars` preserves dashboard variables and secrets across deploys. Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` build variable is required. If wrangler reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable.
 
-`cf build` writes the Worker and assets to `.cloudflare/output`; `cf deploy --prebuilt` uploads exactly that build, so it must follow a build that ran `cf build`. The existing `npm run deploy:vinext` script also works as the deploy command: it builds the vinext Worker and uploads it with `cf`. `cf` is a pinned devDependency, so `npx cf` runs the version in `package-lock.json`. The optional preview command is `npx cf previews deploy`; leave the root directory empty.
+Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
 
-`cloudflare.config.ts` is the source of truth for every cf deploy. Workers Builds injects `CI=true`, `WORKERS_CI=1` and an API token automatically, so no `CLOUDFLARE_API_TOKEN` secret is required. If `cf` reports that more than one account is available, add `CLOUDFLARE_ACCOUNT_ID` as a build variable. Add `HYPERDRIVE_ID` as a non-secret build variable under **Settings → Build → Variables and secrets**. Keep runtime values (`APP_URL`, Discord credentials, `TOKEN_ENCRYPTION_KEY`, `BOT_API_SECRET`, `BOT_API_KEY_ID`, optional `DATABASE_URL`) in **Settings → Variables and Secrets**; build variables are not available at runtime.
+## Database connections
+
+Workers cannot reuse an I/O object across requests, so `src/lib/db/index.ts` builds the `pg` pool per request with React `cache()` and `maxUses: 1`. Hyperdrive does the real connection pooling in front of PostgreSQL. Do not reintroduce a module-level or global pool.
 
 ## Connect the bot
 
